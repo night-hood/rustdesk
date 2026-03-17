@@ -346,6 +346,10 @@ class InputModel {
   Timer? _flingTimer;
   final _flingBaseDelay = 30;
   final _trackpadAdjustPeerLinux = 0.06;
+  // Flutter desktop scroll deltas are pixel-like values, while Linux peer input
+  // backends consume wheel clicks/lines. Convert and accumulate the remainder so
+  // Windows wheel scrolling to Linux does not collapse to single-step events.
+  static const double _wheelAdjustWindowsToPeerLinux = 0.05;
   // This is an experience value.
   final _trackpadAdjustMacToWin = 2.50;
   // Ignore directional locking for very small deltas on both axes (including
@@ -372,6 +376,7 @@ class InputModel {
   int _lastButtons = 0;
   Offset lastMousePos = Offset.zero;
   int _lastWheelTsUs = 0;
+  var _wheelScrollUnsent = Offset.zero;
 
   // Wheel acceleration thresholds.
   static const int _wheelAccelFastThresholdUs = 40000; // 40ms
@@ -1465,22 +1470,31 @@ class InputModel {
           }
         }
       }
-      var dx = rawDx.toInt();
-      var dy = rawDy.toInt();
-      if (rawDx.abs() > rawDy.abs()) {
-        dy = 0;
+      final dominantDx = rawDx.abs() > rawDy.abs() ? rawDx : 0.0;
+      final dominantDy = rawDx.abs() > rawDy.abs() ? 0.0 : rawDy;
+      var dx = 0;
+      var dy = 0;
+      if (isWindows && peerPlatform == kPeerPlatformLinux) {
+        _wheelScrollUnsent += Offset(
+          -dominantDx * _wheelAdjustWindowsToPeerLinux,
+          -dominantDy * _wheelAdjustWindowsToPeerLinux,
+        );
+        dx = _wheelScrollUnsent.dx.truncate();
+        dy = _wheelScrollUnsent.dy.truncate();
+        _wheelScrollUnsent -= Offset(dx.toDouble(), dy.toDouble());
       } else {
-        dx = 0;
-      }
-      if (dx > 0) {
-        dx = -accel;
-      } else if (dx < 0) {
-        dx = accel;
-      }
-      if (dy > 0) {
-        dy = -accel;
-      } else if (dy < 0) {
-        dy = accel;
+        dx = dominantDx.toInt();
+        dy = dominantDy.toInt();
+        if (dx > 0) {
+          dx = -accel;
+        } else if (dx < 0) {
+          dx = accel;
+        }
+        if (dy > 0) {
+          dy = -accel;
+        } else if (dy < 0) {
+          dy = accel;
+        }
       }
       bind.sessionSendMouse(
           sessionId: sessionId,
