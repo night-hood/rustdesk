@@ -18,6 +18,9 @@ const RUSTDESK_CLIPBOARD_OWNER_FORMAT: &'static str = "dyn.com.rustdesk.owner";
 const CLIPBOARD_FORMAT_EXCEL_XML_SPREADSHEET: &'static str = "XML Spreadsheet";
 
 #[cfg(not(target_os = "android"))]
+const CLIPBOARD_DIAG_PREVIEW_LIMIT: usize = 80;
+
+#[cfg(not(target_os = "android"))]
 lazy_static::lazy_static! {
     static ref ARBOARD_MTX: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
     // cache the clipboard msg
@@ -206,6 +209,7 @@ fn update_clipboard_(multi_clipboards: Vec<Clipboard>, side: ClipboardSide) {
 
 #[cfg(not(target_os = "android"))]
 fn do_update_clipboard_(mut to_update_data: Vec<ClipboardData>, side: ClipboardSide) {
+    let diag_summary = diagnostic_clipboard_data_summary(&to_update_data);
     let mut ctx = CLIPBOARD_CTX.lock().unwrap();
     if ctx.is_none() {
         match ClipboardContext::new() {
@@ -227,6 +231,7 @@ fn do_update_clipboard_(mut to_update_data: Vec<ClipboardData>, side: ClipboardS
             log::debug!("Failed to set clipboard: {}", e);
         } else {
             log::debug!("{} updated on {}", CLIPBOARD_NAME, side);
+            log::info!("[clipboard-diag][apply:{side}] {diag_summary}");
         }
     }
 }
@@ -241,6 +246,92 @@ pub fn update_clipboard(multi_clipboards: Vec<Clipboard>, side: ClipboardSide) {
 #[cfg(not(target_os = "android"))]
 pub struct ClipboardContext {
     inner: arboard::Clipboard,
+}
+
+#[cfg(not(target_os = "android"))]
+pub fn diagnostic_message_summary(msg: &Message) -> String {
+    match &msg.union {
+        Some(message::Union::Clipboard(cb)) => {
+            diagnostic_proto_clipboards_summary(std::slice::from_ref(cb))
+        }
+        Some(message::Union::MultiClipboards(mcb)) => {
+            diagnostic_proto_clipboards_summary(&mcb.clipboards)
+        }
+        _ => "non-clipboard-message".to_owned(),
+    }
+}
+
+#[cfg(not(target_os = "android"))]
+pub fn diagnostic_clipboard_data_summary(data: &[ClipboardData]) -> String {
+    let formats = data
+        .iter()
+        .map(|item| match item {
+            ClipboardData::Text(_) => "Text",
+            ClipboardData::Html(_) => "Html",
+            ClipboardData::Rtf(_) => "Rtf",
+            ClipboardData::Image(_) => "Image",
+            ClipboardData::Special((name, _)) => name.as_str(),
+            #[cfg(feature = "unix-file-copy-paste")]
+            ClipboardData::FileUrl(_) => "FileUrl",
+            ClipboardData::Unsupported => "Unsupported",
+            ClipboardData::None => "None",
+        })
+        .collect::<Vec<_>>()
+        .join(",");
+    let text = data.iter().find_map(|item| match item {
+        ClipboardData::Text(text) => Some(text.as_str()),
+        _ => None,
+    });
+    format!(
+        "formats=[{}]; text={}",
+        formats,
+        text.map(diagnostic_text_preview)
+            .unwrap_or_else(|| "<none>".to_owned())
+    )
+}
+
+#[cfg(not(target_os = "android"))]
+fn diagnostic_proto_clipboards_summary(clipboards: &[Clipboard]) -> String {
+    let formats = clipboards
+        .iter()
+        .map(|cb| {
+            cb.format
+                .enum_value()
+                .map(|f| format!("{f:?}"))
+                .unwrap_or_else(|_| "Unknown".to_owned())
+        })
+        .collect::<Vec<_>>()
+        .join(",");
+    let text = clipboards.iter().find_map(|cb| {
+        if cb.format.enum_value() == Ok(hbb_common::message_proto::ClipboardFormat::Text) {
+            let bytes = if cb.compress {
+                hbb_common::compress::decompress(&cb.content)
+            } else {
+                cb.content.clone().into()
+            };
+            String::from_utf8(bytes).ok()
+        } else {
+            None
+        }
+    });
+    format!(
+        "formats=[{}]; text={}",
+        formats,
+        text.as_deref()
+            .map(diagnostic_text_preview)
+            .unwrap_or_else(|| "<none>".to_owned())
+    )
+}
+
+#[cfg(not(target_os = "android"))]
+fn diagnostic_text_preview(text: &str) -> String {
+    let preview = text
+        .replace('\r', "\\r")
+        .replace('\n', "\\n")
+        .chars()
+        .take(CLIPBOARD_DIAG_PREVIEW_LIMIT)
+        .collect::<String>();
+    format!("len={}, preview=\"{}\"", text.len(), preview)
 }
 
 #[cfg(not(target_os = "android"))]

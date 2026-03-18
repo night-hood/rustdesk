@@ -1426,6 +1426,15 @@ impl<T: InvokeUiSession> Remote<T> {
                 Some(message::Union::Clipboard(cb)) => {
                     if !self.handler.lc.read().unwrap().disable_clipboard.v {
                         #[cfg(not(any(target_os = "android", target_os = "ios")))]
+                        log::info!(
+                            "[clipboard-diag][client-recv] {}",
+                            crate::clipboard::diagnostic_message_summary(&{
+                                let mut msg = Message::new();
+                                msg.set_clipboard(cb.clone());
+                                msg
+                            })
+                        );
+                        #[cfg(not(any(target_os = "android", target_os = "ios")))]
                         update_clipboard(vec![cb], ClipboardSide::Client);
                         #[cfg(target_os = "ios")]
                         {
@@ -1444,6 +1453,15 @@ impl<T: InvokeUiSession> Remote<T> {
                 }
                 Some(message::Union::MultiClipboards(_mcb)) => {
                     if !self.handler.lc.read().unwrap().disable_clipboard.v {
+                        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+                        log::info!(
+                            "[clipboard-diag][client-recv] {}",
+                            crate::clipboard::diagnostic_message_summary(&{
+                                let mut msg = Message::new();
+                                msg.set_multi_clipboards(_mcb.clone());
+                                msg
+                            })
+                        );
                         #[cfg(not(any(target_os = "android", target_os = "ios")))]
                         update_clipboard(_mcb.clipboards, ClipboardSide::Client);
                         #[cfg(target_os = "android")]

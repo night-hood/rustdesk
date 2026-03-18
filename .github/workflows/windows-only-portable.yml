@@ -72,9 +72,15 @@ jobs:
       - name: Patch flutter
         shell: bash
         run: |
-          cp .github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff $(dirname $(dirname $(which flutter)))
-          cd $(dirname $(dirname $(which flutter)))
-          [[ "3.24.5" == ${{ env.FLUTTER_VERSION }} ]] && git apply flutter_3.24.4_dropdown_menu_enableFilter.diff
+          FLUTTER_DIR="$(dirname "$(dirname "$(which flutter)")")"
+          PATCH_FILE="${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff"
+          cp "$PATCH_FILE" "$FLUTTER_DIR"
+          cd "$FLUTTER_DIR"
+          if [[ "3.24.5" == ${{ env.FLUTTER_VERSION }} ]] && git apply --check flutter_3.24.4_dropdown_menu_enableFilter.diff; then
+            git apply flutter_3.24.4_dropdown_menu_enableFilter.diff
+          else
+            echo "Skipping outdated flutter patch for Flutter ${{ env.FLUTTER_VERSION }}"
+          fi
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@v1

@@ -91,6 +91,12 @@ fn run(sp: EmptyExtraFieldService) -> ResultType<()> {
                 }
                 if let Some(msg) = handler.get_clipboard_msg() {
                     if handler.should_send_clipboard_msg(&msg) {
+                        if sp.name() == NAME {
+                            log::info!(
+                                "[clipboard-diag][host-send] {}",
+                                crate::clipboard::diagnostic_message_summary(&msg)
+                            );
+                        }
                         sp.send(msg);
                     }
                 }
@@ -107,6 +113,10 @@ fn run(sp: EmptyExtraFieldService) -> ResultType<()> {
                 if !crate::platform::linux::is_x11() && sp.name() == NAME {
                     if let Some(msg) = handler.get_clipboard_msg() {
                         if handler.should_send_clipboard_msg(&msg) {
+                            log::info!(
+                                "[clipboard-diag][host-send] {}",
+                                crate::clipboard::diagnostic_message_summary(&msg)
+                            );
                             sp.send(msg);
                         }
                     }
