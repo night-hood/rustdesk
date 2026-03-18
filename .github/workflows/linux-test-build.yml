@@ -2,6 +2,9 @@ name: Linux Test Build
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - fix/wayland-clipboard-polling
 
 env:
   RUST_VERSION: "1.75"
