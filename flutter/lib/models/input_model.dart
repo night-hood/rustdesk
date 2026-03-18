@@ -360,6 +360,8 @@ class InputModel {
   static const double _trackpadAxisLockRatio = 1.6;
   int _trackpadSpeed = kDefaultTrackpadSpeed;
   double _trackpadSpeedInner = kDefaultTrackpadSpeed / 100.0;
+  int _mouseWheelSpeed = kDefaultMouseWheelSpeed;
+  double _mouseWheelSpeedInner = kDefaultMouseWheelSpeed / 100.0;
   var _trackpadScrollUnsent = Offset.zero;
 
   // Mobile relative mouse delta accumulators (for slow/fine movements).
@@ -410,6 +412,7 @@ class InputModel {
   double get devicePixelRatio => parent.target!.canvasModel.devicePixelRatio;
   bool get isViewCamera => parent.target!.connType == ConnType.viewCamera;
   int get trackpadSpeed => _trackpadSpeed;
+  int get mouseWheelSpeed => _mouseWheelSpeed;
   bool get useEdgeScroll =>
       parent.target!.canvasModel.scrollStyle == ScrollStyle.scrolledge;
 
@@ -538,6 +541,24 @@ class InputModel {
       _trackpadSpeed = kDefaultTrackpadSpeed;
     }
     _trackpadSpeedInner = _trackpadSpeed / 100.0;
+  }
+
+  /// Updates the mouse wheel speed based on the session option value.
+  ///
+  /// Falls back to the user's default option when the session override is empty
+  /// or invalid.
+  Future<void> updateMouseWheelSpeed() async {
+    _mouseWheelSpeed =
+        int.tryParse(await bind.sessionGetFlutterOption(
+                    sessionId: sessionId, k: kKeyMouseWheelSpeed) ??
+                '') ??
+            int.tryParse(bind.mainGetUserDefaultOption(key: kKeyMouseWheelSpeed)) ??
+            kDefaultMouseWheelSpeed;
+    if (_mouseWheelSpeed < kMinMouseWheelSpeed ||
+        _mouseWheelSpeed > kMaxMouseWheelSpeed) {
+      _mouseWheelSpeed = kDefaultMouseWheelSpeed;
+    }
+    _mouseWheelSpeedInner = _mouseWheelSpeed / 100.0;
   }
 
   void handleKeyDownEventModifiers(KeyEvent e) {
@@ -1475,9 +1496,11 @@ class InputModel {
       var dx = 0;
       var dy = 0;
       if (isWindows && peerPlatform == kPeerPlatformLinux) {
+        final wheelAdjust =
+            _wheelAdjustWindowsToPeerLinux * _mouseWheelSpeedInner;
         _wheelScrollUnsent += Offset(
-          -dominantDx * _wheelAdjustWindowsToPeerLinux,
-          -dominantDy * _wheelAdjustWindowsToPeerLinux,
+          -dominantDx * wheelAdjust,
+          -dominantDy * wheelAdjust,
         );
         dx = _wheelScrollUnsent.dx.truncate();
         dy = _wheelScrollUnsent.dy.truncate();

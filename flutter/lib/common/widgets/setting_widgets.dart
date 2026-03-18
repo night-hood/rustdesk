@@ -249,18 +249,26 @@ List<(String, String)> otherDefaultSettings() {
   return v;
 }
 
-class TrackpadSpeedWidget extends StatefulWidget {
+class _InputSpeedWidget extends StatefulWidget {
   final SimpleWrapper<int> value;
+  final int min;
+  final int max;
   // If null, no debouncer will be applied.
   final Function(int)? onDebouncer;
 
-  TrackpadSpeedWidget({Key? key, required this.value, this.onDebouncer});
+  const _InputSpeedWidget({
+    Key? key,
+    required this.value,
+    required this.min,
+    required this.max,
+    this.onDebouncer,
+  }) : super(key: key);
 
   @override
-  TrackpadSpeedWidgetState createState() => TrackpadSpeedWidgetState();
+  _InputSpeedWidgetState createState() => _InputSpeedWidgetState();
 }
 
-class TrackpadSpeedWidgetState extends State<TrackpadSpeedWidget> {
+class _InputSpeedWidgetState extends State<_InputSpeedWidget> {
   final TextEditingController _controller = TextEditingController();
   late final Debouncer<int> debouncerSpeed;
 
@@ -269,8 +277,7 @@ class TrackpadSpeedWidgetState extends State<TrackpadSpeedWidget> {
 
   void updateValue(int newValue) {
     setState(() {
-      value = newValue.clamp(kMinTrackpadSpeed, kMaxTrackpadSpeed);
-      // Scale the trackpad speed value to a percentage for display purposes.
+      value = newValue.clamp(widget.min, widget.max);
       _controller.text = value.toString();
       if (widget.onDebouncer != null) {
         debouncerSpeed.setValue(value);
@@ -299,9 +306,9 @@ class TrackpadSpeedWidgetState extends State<TrackpadSpeedWidget> {
           flex: 3,
           child: Slider(
             value: value.toDouble(),
-            min: kMinTrackpadSpeed.toDouble(),
-            max: kMaxTrackpadSpeed.toDouble(),
-            divisions: ((kMaxTrackpadSpeed - kMinTrackpadSpeed) / 10).round(),
+            min: widget.min.toDouble(),
+            max: widget.max.toDouble(),
+            divisions: ((widget.max - widget.min) / 10).round(),
             onChanged: (double v) => updateValue(v.round()),
           ),
         ),
@@ -337,4 +344,36 @@ class TrackpadSpeedWidgetState extends State<TrackpadSpeedWidget> {
       ],
     );
   }
+}
+
+class TrackpadSpeedWidget extends StatelessWidget {
+  final SimpleWrapper<int> value;
+  final Function(int)? onDebouncer;
+
+  const TrackpadSpeedWidget({Key? key, required this.value, this.onDebouncer})
+      : super(key: key);
+
+  @override
+  Widget build(BuildContext context) => _InputSpeedWidget(
+        value: value,
+        min: kMinTrackpadSpeed,
+        max: kMaxTrackpadSpeed,
+        onDebouncer: onDebouncer,
+      );
+}
+
+class MouseWheelSpeedWidget extends StatelessWidget {
+  final SimpleWrapper<int> value;
+  final Function(int)? onDebouncer;
+
+  const MouseWheelSpeedWidget({Key? key, required this.value, this.onDebouncer})
+      : super(key: key);
+
+  @override
+  Widget build(BuildContext context) => _InputSpeedWidget(
+        value: value,
+        min: kMinMouseWheelSpeed,
+        max: kMaxMouseWheelSpeed,
+        onDebouncer: onDebouncer,
+      );
 }

@@ -3764,6 +3764,7 @@ class FFI {
 
     if (isDesktop) {
       inputModel.updateTrackpadSpeed();
+      inputModel.updateMouseWheelSpeed();
     }
 
     // CAUTION: `sessionStart()` and `sessionStartWithDisplays()` are an async functions.

@@ -689,6 +689,8 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Use WebSocket", "Использовать WebSocket"),
         ("Trackpad speed", "Скорость трекпада"),
         ("Default trackpad speed", "Скорость трекпада по умолчанию"),
+        ("Mouse wheel speed", "Скорость колеса мыши"),
+        ("Default mouse wheel speed", "Скорость колеса мыши по умолчанию"),
         ("Numeric one-time password", "Цифровой одноразовый пароль"),
         ("Enable IPv6 P2P connection", "Использовать подключение IPv6 P2P"),
         ("Enable UDP hole punching", "Использовать UDP hole punching"),

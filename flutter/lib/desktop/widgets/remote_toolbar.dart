@@ -1813,6 +1813,15 @@ class _KeyboardMenu extends StatelessWidget {
           ffi: ffi,
         );
         speedWidgets.add(trackpad);
+        if (isWindows && pi.platform == kPeerPlatformLinux) {
+          final wheel = MenuButton(
+            child: Text(translate('Mouse wheel speed')).paddingOnly(left: 26.0),
+            onPressed:
+                enabled ? () => mouseWheelSpeedDialog(sessionId, ffi) : null,
+            ffi: ffi,
+          );
+          speedWidgets.add(wheel);
+        }
       }
     }
     return speedWidgets;

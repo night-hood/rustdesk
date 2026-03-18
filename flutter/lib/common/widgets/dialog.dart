@@ -1920,8 +1920,32 @@ trackpadSpeedDialog(SessionID sessionId, FFI ffi) async {
   });
   msgBoxCommon(
       ffi.dialogManager,
-      'Trackpad speed',
+      translate('Trackpad speed'),
       TrackpadSpeedWidget(
+        value: curSpeed,
+      ),
+      [btnClose]);
+}
+
+mouseWheelSpeedDialog(SessionID sessionId, FFI ffi) async {
+  int initSpeed = ffi.inputModel.mouseWheelSpeed;
+  final curSpeed = SimpleWrapper(initSpeed);
+  final btnClose = dialogButton('Close', onPressed: () async {
+    if (curSpeed.value <= kMaxMouseWheelSpeed &&
+        curSpeed.value >= kMinMouseWheelSpeed &&
+        curSpeed.value != initSpeed) {
+      await bind.sessionSetFlutterOption(
+          sessionId: sessionId,
+          k: kKeyMouseWheelSpeed,
+          v: curSpeed.value.toString());
+      await ffi.inputModel.updateMouseWheelSpeed();
+    }
+    ffi.dialogManager.dismissAll();
+  });
+  msgBoxCommon(
+      ffi.dialogManager,
+      translate('Mouse wheel speed'),
+      MouseWheelSpeedWidget(
         value: curSpeed,
       ),
       [btnClose]);

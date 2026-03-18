@@ -261,6 +261,12 @@ const int kMinTrackpadSpeed = 10;
 const int kDefaultTrackpadSpeed = 100;
 const int kMaxTrackpadSpeed = 1000;
 
+// mouse wheel speed
+const String kKeyMouseWheelSpeed = 'mouse-wheel-speed';
+const int kMinMouseWheelSpeed = 10;
+const int kDefaultMouseWheelSpeed = 100;
+const int kMaxMouseWheelSpeed = 1000;
+
 // relative mouse mode
 /// Throttle duration (in milliseconds) for updating pointer lock center during
 /// window move/resize events. Lower values provide more responsive updates but

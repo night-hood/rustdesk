@@ -1736,6 +1736,7 @@ class _DisplayState extends State<_Display> {
       imageQuality(context),
       codec(context),
       if (isDesktop) trackpadSpeed(context),
+      if (isWindows) mouseWheelSpeed(context),
       if (!isWeb) privacyModeImpl(context),
       other(context),
     ]).marginOnly(bottom: _kListViewBottomMargin);
@@ -1859,8 +1860,26 @@ class _DisplayState extends State<_Display> {
       // But it may also be ok to take effect in the next connection.
     }
 
-    return _Card(title: 'Default trackpad speed', children: [
+    return _Card(title: translate('Default trackpad speed'), children: [
       TrackpadSpeedWidget(
+        value: curSpeed,
+        onDebouncer: onDebouncer,
+      ),
+    ]);
+  }
+
+  Widget mouseWheelSpeed(BuildContext context) {
+    final initSpeed =
+        (int.tryParse(bind.mainGetUserDefaultOption(key: kKeyMouseWheelSpeed)) ??
+            kDefaultMouseWheelSpeed);
+    final curSpeed = SimpleWrapper(initSpeed);
+    void onDebouncer(int v) {
+      bind.mainSetUserDefaultOption(
+          key: kKeyMouseWheelSpeed, value: v.toString());
+    }
+
+    return _Card(title: translate('Default mouse wheel speed'), children: [
+      MouseWheelSpeedWidget(
         value: curSpeed,
         onDebouncer: onDebouncer,
       ),
