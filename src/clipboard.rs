@@ -60,6 +60,7 @@ pub fn check_clipboard(
     let ctx2 = ctx.as_mut()?;
     match ctx2.get(side, force) {
         Ok(content) => {
+            let content = normalize_linux_wayland_clipboard(content);
             if !content.is_empty() {
                 let mut msg = Message::new();
                 let clipboards = proto::create_multi_clipboards(content);
@@ -236,6 +237,22 @@ pub fn update_clipboard(multi_clipboards: Vec<Clipboard>, side: ClipboardSide) {
     std::thread::spawn(move || {
         update_clipboard_(multi_clipboards, side);
     });
+}
+
+#[cfg(not(target_os = "android"))]
+fn normalize_linux_wayland_clipboard(data: Vec<ClipboardData>) -> Vec<ClipboardData> {
+    #[cfg(target_os = "linux")]
+    {
+        if !crate::platform::linux::is_x11() {
+            if let Some(text) = data.iter().find_map(|item| match item {
+                ClipboardData::Text(text) => Some(text.clone()),
+                _ => None,
+            }) {
+                return vec![ClipboardData::Text(text)];
+            }
+        }
+    }
+    data
 }
 
 #[cfg(not(target_os = "android"))]
@@ -475,7 +492,8 @@ pub fn get_current_clipboard_msg(
     let mut multi_clipboards = LAST_MULTI_CLIPBOARDS.lock().unwrap();
     if multi_clipboards.clipboards.is_empty() {
         let mut ctx = ClipboardContext::new().ok()?;
-        *multi_clipboards = proto::create_multi_clipboards(ctx.get(side, true).ok()?);
+        let data = normalize_linux_wayland_clipboard(ctx.get(side, true).ok()?);
+        *multi_clipboards = proto::create_multi_clipboards(data);
     }
     if multi_clipboards.clipboards.is_empty() {
         return None;
@@ -915,6 +933,28 @@ mod tests {
                 "dyn.test.format".to_owned(),
                 vec![1, 2, 3, 4],
             ))]
+        );
+    }
+
+    #[test]
+    fn normalize_wayland_text_prefers_plain_text() {
+        let normalized = normalize_linux_wayland_clipboard(vec![
+            arboard::ClipboardData::Html("<b>old</b>".to_owned()),
+            arboard::ClipboardData::Text("new".to_owned()),
+            arboard::ClipboardData::Rtf("{\\rtf1 old}".to_owned()),
+        ]);
+        #[cfg(target_os = "linux")]
+        if !crate::platform::linux::is_x11() {
+            assert_eq!(normalized, vec![arboard::ClipboardData::Text("new".to_owned())]);
+            return;
+        }
+        assert_eq!(
+            normalized,
+            vec![
+                arboard::ClipboardData::Html("<b>old</b>".to_owned()),
+                arboard::ClipboardData::Text("new".to_owned()),
+                arboard::ClipboardData::Rtf("{\\rtf1 old}".to_owned()),
+            ]
         );
     }
 }
