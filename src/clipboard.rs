@@ -33,6 +33,10 @@ lazy_static::lazy_static! {
 const CLIPBOARD_GET_MAX_RETRY: usize = 3;
 #[cfg(not(target_os = "android"))]
 const CLIPBOARD_GET_RETRY_INTERVAL_DUR: Duration = Duration::from_millis(33);
+#[cfg(target_os = "windows")]
+const CLIPBOARD_SET_MAX_RETRY: usize = 5;
+#[cfg(target_os = "windows")]
+const CLIPBOARD_SET_RETRY_INTERVAL_DUR: Duration = Duration::from_millis(33);
 
 #[cfg(not(target_os = "android"))]
 const SUPPORTED_FORMATS: &[ClipboardFormat] = &[
@@ -234,6 +238,11 @@ fn do_update_clipboard_(mut to_update_data: Vec<ClipboardData>, side: ClipboardS
 
 #[cfg(not(target_os = "android"))]
 pub fn update_clipboard(multi_clipboards: Vec<Clipboard>, side: ClipboardSide) {
+    #[cfg(target_os = "windows")]
+    {
+        update_clipboard_(multi_clipboards, side);
+        return;
+    }
     std::thread::spawn(move || {
         update_clipboard_(multi_clipboards, side);
     });
@@ -395,6 +404,26 @@ impl ClipboardContext {
 
     fn set(&mut self, data: &[ClipboardData]) -> ResultType<()> {
         let _lock = ARBOARD_MTX.lock().unwrap();
+        #[cfg(target_os = "windows")]
+        {
+            for i in 0..CLIPBOARD_SET_MAX_RETRY {
+                match self.inner.set_formats(data) {
+                    Ok(()) => return Ok(()),
+                    Err(arboard::Error::ClipboardOccupied) => {
+                        log::debug!(
+                            "Failed to set clipboard, clipboard is occupied, retrying... {}",
+                            i + 1
+                        );
+                        std::thread::sleep(CLIPBOARD_SET_RETRY_INTERVAL_DUR);
+                    }
+                    Err(e) => return Err(e.into()),
+                }
+            }
+            bail!(
+                "Failed to set clipboard, clipboard is occupied, {CLIPBOARD_SET_MAX_RETRY} retries failed"
+            );
+        }
+        #[cfg(not(target_os = "windows"))]
         self.inner.set_formats(data)?;
         Ok(())
     }
