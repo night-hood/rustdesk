@@ -69,6 +69,7 @@ jobs:
             libpam0g-dev \
             libpulse-dev \
             libssl-dev \
+            libunwind-dev \
             libva-dev \
             libvdpau-dev \
             libxcb-randr0-dev \
