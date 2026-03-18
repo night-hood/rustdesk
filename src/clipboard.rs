@@ -516,10 +516,13 @@ impl ClipboardSide {
     }
 
     fn is_owner(&self, data: &[u8]) -> bool {
-        if data.len() == 0 {
+        if data.is_empty() {
             return false;
         }
-        data[0] & 0b11 != 0
+        match self {
+            ClipboardSide::Host => data[0] & 0b01 != 0,
+            ClipboardSide::Client => data[0] & 0b10 != 0,
+        }
     }
 }
 
@@ -607,7 +610,7 @@ mod proto {
         let content = if compress {
             compressed
         } else {
-            s.bytes().collect::<Vec<u8>>()
+            d
         };
         Clipboard {
             compress,
@@ -881,5 +884,37 @@ pub mod clipboard_listener {
             }
         });
         h
+    }
+}
+
+#[cfg(all(test, not(target_os = "android")))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn clipboard_side_owner_flags_are_side_specific() {
+        assert!(ClipboardSide::Host.is_owner(&[0b01]));
+        assert!(!ClipboardSide::Host.is_owner(&[0b10]));
+        assert!(ClipboardSide::Client.is_owner(&[0b10]));
+        assert!(!ClipboardSide::Client.is_owner(&[0b01]));
+        assert!(!ClipboardSide::Host.is_owner(&[]));
+        assert!(!ClipboardSide::Client.is_owner(&[]));
+    }
+
+    #[test]
+    fn special_clipboard_roundtrip_preserves_data() {
+        let original = vec![arboard::ClipboardData::Special((
+            "dyn.test.format".to_owned(),
+            vec![1, 2, 3, 4],
+        ))];
+        let multi = proto::create_multi_clipboards(original);
+        let decoded = proto::from_multi_clipboards(multi.clipboards);
+        assert_eq!(
+            decoded,
+            vec![arboard::ClipboardData::Special((
+                "dyn.test.format".to_owned(),
+                vec![1, 2, 3, 4],
+            ))]
+        );
     }
 }
