@@ -137,9 +137,15 @@ jobs:
       - name: Patch flutter
         shell: bash
         run: |
-          cp .github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff "$(dirname "$(dirname "$(which flutter)")")"
-          pushd "$(dirname "$(dirname "$(which flutter)")")"
-          git apply flutter_3.24.4_dropdown_menu_enableFilter.diff
+          FLUTTER_DIR="$(dirname "$(dirname "$(which flutter)")")"
+          PATCH_FILE="${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff"
+          cp "$PATCH_FILE" "$FLUTTER_DIR"
+          pushd "$FLUTTER_DIR"
+          if git apply --check flutter_3.24.4_dropdown_menu_enableFilter.diff; then
+            git apply flutter_3.24.4_dropdown_menu_enableFilter.diff
+          else
+            echo "Skipping outdated flutter patch for Flutter ${{ env.FLUTTER_VERSION }}"
+          fi
           popd
 
       - name: Build rustdesk core
